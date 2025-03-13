@@ -1,13 +1,14 @@
 name: ANI-1xnr
 year: 2024
-category: Benchmarks
-license: CC0
+category: Potential Fitting
+license: CC BY 4.0
 minimum_load_atoms_version: 0.3
-format: lmdb
 description: |
-    The ANI-1ccx dataset comprises an "optimally spanning" subset of the :doc:`/datasets/ANI-1x` dataset,
-    with each structure being re-labelled with the total structure energy using the 
-    "gold standard" CCSD(T)/CBS level of theory. Internally, files are downloaded from
+    The ANI-1xnr dataset is the training dataset for the general reactive MLIP of the same name from: Exploring the frontiers of condensed-phase 
+    chemistry with a general reactive machine learning potential (2024). Structures are sampled through active learning from 'nano-reactor' inspired MD simulations.
+    Periodic cells containing randomly placed molecules (on average 139 atoms in total) of random compositions of C, H, N and O with less than three non-H atoms are used 
+    to start MLIP driven MD simulations with randomised temperature and density to promote reactions and the formation of new products. 
+    All structures from MD snapshots are labelled using the uBLYP-D3/TZV2P-GTH level of theory. Internally, files are downloaded from 
     `FigShare <https://springernature.figshare.com/articles/dataset/Exploring_the_frontiers_of_condensed-phase_chemistry_with_a_general_reactive_machine_learning_potential/22814579?file=43190004>`__.
 citation: |
     @article{Zhang-24-03,
@@ -30,20 +31,11 @@ citation: |
 
 per_atom_properties:
     dft_forces:
-        desc: force vectors (as labelled with :math:`\omega`\ B97x/6-31G(d))
+        desc: force vectors (as labelled with uBLYP-D3/TZV2P-GTH)
         units: eV/Å
 per_structure_properties:
-    cc_energy:
-        desc: energy of the structure (as labelled with CCSD(T)/CBS)
-        units: eV
     dft_energy:
-        desc: energy of the structure (as labelled with :math:`\omega`\ B97x/6-31G(d))
+        desc: energy of the structure (as labelled with uBLYP-D3/TZV2P-GTH)
         units: eV
-    dft_dipole:
-        desc: dipole moment of the structure (as labelled with :math:`\omega`\ B97x/6-31G(d))
-        units: e Å
-    1x_idx:
-        desc: index of the structure in the :doc:`/datasets/ANI-1x` dataset
 
-representative_structure: 100_000
-
+representative_structure: 22_000

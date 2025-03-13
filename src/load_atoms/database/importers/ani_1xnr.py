@@ -4,8 +4,8 @@ from pathlib import Path
 from typing import Iterator
 
 import h5py
-import numpy as np
 from ase import Atoms
+from ase.data import atomic_numbers as element_to_atomic_num_dict
 from load_atoms.database.backend import (
     BaseImporter,
     FileDownload,
@@ -13,6 +13,33 @@ from load_atoms.database.backend import (
 from load_atoms.progress import Progress
 
 Ha_to_eV = 27.2114079527
+
+
+def load_ani1xnr_subset_structures(iter_group: h5py.Group, task):
+
+    for data in iter_group.values():
+
+        # iterate over each structure in each subset
+        elements = data["species"][()]
+        coords = data["coordinates"][()]
+        dft_energy = data["energy"][()]
+        dft_forces = data["forces"][()]
+        cell = data["cell"][()][0]
+
+        Zs = [element_to_atomic_num_dict[element.decode()] for element in elements]
+
+        for i in range(coords.shape[0]):
+            structure = Atoms(positions=coords[i], numbers=Zs)
+            
+            # energy is in hartree, convert to eV
+            structure.set_cell(cell)
+            structure.info["energy"] = dft_energy[i] * Ha_to_eV
+
+            # forces are in hartree/angstrom, convert to eV/angstrom
+            structure.arrays["forces"] = dft_forces[i] * Ha_to_eV
+
+            task.update(advance=1)
+            yield structure
 
 
 class Importer(BaseImporter):
@@ -39,44 +66,18 @@ class Importer(BaseImporter):
 
         with h5py.File(tmp_dir / "ani1xnr.h5", "r") as f:
 
-            print("Available keys:", list(f.keys()))
-
-            for group_name, group in f.items():
-                print("Group Name: ", group_name)
-                print("Group Keys: ", group.keys())
-
-                for g_key, g_val in group.items():
-                    print("G Key: ", g_key)
-                    print("G Val Keys: ", g_val.keys())
-                    print('')
-
-                break
-            n_structures = sum(
-                data["coordinates"].shape[0] for data in f.values()
-            )
             task = progress.new_task(
-                "Processing 5 structures",
-                total=n_structures,
+                "Processing 26 650 structures",
+                total=26650,
             )
+            print("Task Type: ", type(task))
 
-            # iterate over each chemical formula in the dataset:
-            for data in f.values():
-                Zs = data["atomic_numbers"]
-                coords = data["coordinates"][()]
-                dft_energy = data["wb97x_dz.energy"][()]
-                dft_dipole = data["wb97x_dz.dipole"][()]
-                dft_forces = data["wb97x_dz.forces"][()]
-                cc_energy = data["ccsd(t)_cbs.energy"][()]
+            # handle first iterations data
+            for iter_name, iter_group in f.items():
 
-                for i in range(data["coordinates"].shape[0]):
-                    structure = Atoms(positions=coords[i], numbers=Zs)
-                    # see: https://www.nature.com/articles/s41597-020-0473-z/tables/2
-                    # energy is in hartree, convert to eV
-                    structure.info["energy"] = dft_energy[i] * Ha_to_eV
-                    # units of e * angstrom
-                    structure.info["dipole"] = dft_dipole[i]
-                    structure.info["is_in_ccx"] = not np.isnan(cc_energy[i])
-                    # forces are in hartree/angstrom, convert to eV/angstrom
-                    structure.arrays["forces"] = dft_forces[i] * Ha_to_eV
-                    task.update(advance=1)
-                    yield structure
+                if iter_name != "nano-data-it1-6.h5":
+                    yield from load_ani1xnr_subset_structures(iter_group, task)
+
+            # handle nano-data
+            for iter_group in f["nano-data-it1-6.h5"].values():
+                yield from load_ani1xnr_subset_structures(iter_group, task)
